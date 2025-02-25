@@ -958,6 +958,78 @@ source/PluginProcessor.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/PluginProcessor.cpp.s
 .PHONY : source/PluginProcessor.cpp.s
 
+source/dsp/FFTProcessor.o: source/dsp/FFTProcessor.cpp.o
+.PHONY : source/dsp/FFTProcessor.o
+
+# target to build an object file
+source/dsp/FFTProcessor.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/FFTProcessor.cpp.o
+.PHONY : source/dsp/FFTProcessor.cpp.o
+
+source/dsp/FFTProcessor.i: source/dsp/FFTProcessor.cpp.i
+.PHONY : source/dsp/FFTProcessor.i
+
+# target to preprocess a source file
+source/dsp/FFTProcessor.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/FFTProcessor.cpp.i
+.PHONY : source/dsp/FFTProcessor.cpp.i
+
+source/dsp/FFTProcessor.s: source/dsp/FFTProcessor.cpp.s
+.PHONY : source/dsp/FFTProcessor.s
+
+# target to generate assembly for a file
+source/dsp/FFTProcessor.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/FFTProcessor.cpp.s
+.PHONY : source/dsp/FFTProcessor.cpp.s
+
+source/dsp/PitchDetector.o: source/dsp/PitchDetector.cpp.o
+.PHONY : source/dsp/PitchDetector.o
+
+# target to build an object file
+source/dsp/PitchDetector.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/PitchDetector.cpp.o
+.PHONY : source/dsp/PitchDetector.cpp.o
+
+source/dsp/PitchDetector.i: source/dsp/PitchDetector.cpp.i
+.PHONY : source/dsp/PitchDetector.i
+
+# target to preprocess a source file
+source/dsp/PitchDetector.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/PitchDetector.cpp.i
+.PHONY : source/dsp/PitchDetector.cpp.i
+
+source/dsp/PitchDetector.s: source/dsp/PitchDetector.cpp.s
+.PHONY : source/dsp/PitchDetector.s
+
+# target to generate assembly for a file
+source/dsp/PitchDetector.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/PitchDetector.cpp.s
+.PHONY : source/dsp/PitchDetector.cpp.s
+
+source/midi/MIDIManager.o: source/midi/MIDIManager.cpp.o
+.PHONY : source/midi/MIDIManager.o
+
+# target to build an object file
+source/midi/MIDIManager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/midi/MIDIManager.cpp.o
+.PHONY : source/midi/MIDIManager.cpp.o
+
+source/midi/MIDIManager.i: source/midi/MIDIManager.cpp.i
+.PHONY : source/midi/MIDIManager.i
+
+# target to preprocess a source file
+source/midi/MIDIManager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/midi/MIDIManager.cpp.i
+.PHONY : source/midi/MIDIManager.cpp.i
+
+source/midi/MIDIManager.s: source/midi/MIDIManager.cpp.s
+.PHONY : source/midi/MIDIManager.s
+
+# target to generate assembly for a file
+source/midi/MIDIManager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/midi/MIDIManager.cpp.s
+.PHONY : source/midi/MIDIManager.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1067,6 +1139,15 @@ help:
 	@echo "... source/PluginProcessor.o"
 	@echo "... source/PluginProcessor.i"
 	@echo "... source/PluginProcessor.s"
+	@echo "... source/dsp/FFTProcessor.o"
+	@echo "... source/dsp/FFTProcessor.i"
+	@echo "... source/dsp/FFTProcessor.s"
+	@echo "... source/dsp/PitchDetector.o"
+	@echo "... source/dsp/PitchDetector.i"
+	@echo "... source/dsp/PitchDetector.s"
+	@echo "... source/midi/MIDIManager.o"
+	@echo "... source/midi/MIDIManager.i"
+	@echo "... source/midi/MIDIManager.s"
 .PHONY : help
 
 

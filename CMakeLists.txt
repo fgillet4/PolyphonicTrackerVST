@@ -26,11 +26,25 @@ juce_add_plugin(PolyphonicTrackerVST
     VST3_CATEGORIES "Analyzer"
 )
 
+# Create directory structure if it doesn't exist
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/dsp)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/midi)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/gui)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/utils)
+
 # Add source files
 target_sources(PolyphonicTrackerVST
     PRIVATE
+        # Main plugin files
         source/PluginProcessor.cpp
         source/PluginEditor.cpp
+        
+        # DSP components
+        source/dsp/FFTProcessor.cpp
+        source/dsp/PitchDetector.cpp
+        
+        # MIDI components
+        source/midi/MIDIManager.cpp
 )
 
 # Add include directories
@@ -50,3 +64,37 @@ target_link_libraries(PolyphonicTrackerVST
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
+
+# Set Mac deployment target
+if(APPLE)
+    set_target_properties(PolyphonicTrackerVST PROPERTIES
+        OSX_DEPLOYMENT_TARGET "10.13"
+        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ""
+    )
+endif()
+
+# Add optimization flags for release builds
+if(CMAKE_BUILD_TYPE MATCHES Release)
+    if(APPLE)
+        # Mac-specific optimizations
+        target_compile_options(PolyphonicTrackerVST PRIVATE
+            -O3
+            -flto
+            -march=native
+        )
+    elseif(WIN32)
+        # Windows-specific optimizations
+        target_compile_options(PolyphonicTrackerVST PRIVATE
+            /O2
+            /GL
+        )
+    else()
+        # Linux-specific optimizations
+        target_compile_options(PolyphonicTrackerVST PRIVATE
+            -O3
+            -flto
+            -march=native
+        )
+    endif()
+endif()

@@ -1,0 +1,23 @@
+1. Basic build (Release mode):
+
+./build.sh
+
+2. Debug build:
+
+./build.sh -t Debug
+
+3. Clean build in Release mode:
+
+./build.sh -c
+
+4. Debug build with installation:
+
+./build.sh -t Debug -i
+
+5. Verbose Release build with cleaning:
+
+./build.sh -c -v
+
+6. See all options:
+
+bash./build.sh --help

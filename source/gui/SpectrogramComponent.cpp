@@ -252,7 +252,24 @@ void SpectrogramComponent::paint(juce::Graphics& g)
 
 void SpectrogramComponent::resized()
 {
-    // Nothing to do here
+    // Handle component resizing
+    int width = getWidth();
+    int height = getHeight();
+    
+    // Log the spectrogram size change for debugging
+    juce::Logger::writeToLog("SpectrogramComponent resized: " + juce::String(width) + "x" + juce::String(height));
+    
+    // Update frequency scale based on new dimensions
+    for (size_t i = 0; i < frequencyScale.size(); ++i)
+    {
+        float proportion = static_cast<float>(i) / static_cast<float>(kMaxFFTSize - 1);
+        frequencyScale[i] = (useLogFrequency)
+            ? kMinFrequency * std::pow(kMaxFrequency / kMinFrequency, proportion)
+            : kMinFrequency + (kMaxFrequency - kMinFrequency) * proportion;
+    }
+    
+    // Force a repaint when size changes
+    repaint();
 }
 
 void SpectrogramComponent::updateFFT(const float* newFFTData, int size)

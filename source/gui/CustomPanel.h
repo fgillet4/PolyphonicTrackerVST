@@ -20,26 +20,41 @@ public:
     // Custom implementation to make children really work
     void addAndMakeVisible(juce::Component& childComponent)
     {
-        // Actually add the child component
-        addChildComponent(childComponent);
+        // Use the standard JUCE implementation 
+        Component::addAndMakeVisible(childComponent);
         
-        // Make it visible, with a size
+        // Extra steps to ensure visibility
         childComponent.setVisible(true);
         
-        // Force a bounds check for safety
-        if (childComponent.getWidth() <= 0 || childComponent.getHeight() <= 0) {
-            // If no size, give it a default size
-            childComponent.setBounds(20, 20, 300, 30);
+        // CRITICAL FIX: Set minimum bounds if component has zero-sized bounds
+        // This ensures components have at least some size and position
+        if (childComponent.getWidth() == 0 || childComponent.getHeight() == 0) {
+            // CRITICAL FIX: Calculate a unique Y position based on child count to avoid overlap
+            int x = childComponent.getX() == 0 ? 20 : childComponent.getX();
+            
+            // CRITICAL FIX: Use component count to stagger Y positions
+            // This ensures components don't stack on top of each other
+            int childCount = getNumChildComponents();
+            int y = childComponent.getY() == 0 ? (20 + (childCount * 40)) : childComponent.getY();
+            
+            // Use a minimum width/height for visibility
+            int width = childComponent.getWidth() == 0 ? 200 : childComponent.getWidth();
+            int height = childComponent.getHeight() == 0 ? 30 : childComponent.getHeight();
+            
+            childComponent.setBounds(x, y, width, height);
+            juce::Logger::writeToLog("CustomPanel: Fixed zero-sized bounds for component in " + title + 
+                                 " - new bounds: " + childComponent.getBounds().toString() +
+                                 " (child " + juce::String(childCount) + ")");
         }
+        
+        // Ensure component is on top
+        childComponent.toFront(false);
         
         // Log for debugging
         juce::Logger::writeToLog("CustomPanel: Added child to " + title + 
                              " - visible: " + juce::String(childComponent.isVisible() ? "YES" : "NO") +
                              " bounds: " + childComponent.getBounds().toString());
                              
-        // Ensure it's really on top
-        childComponent.toFront(false);
-        
         // Force repaint
         repaint();
     }
@@ -67,7 +82,7 @@ public:
         
         // Add title with purple highlight
         g.setColour(juce::Colour(0xFF9C33FF)); // Purple
-        g.setFont(16.0f);
+        g.setFont(juce::Font(16.0f).boldened());
         g.drawText(title, 20, 10, getWidth() - 40, 24, juce::Justification::left, true);
         
         // Add control box outline to show where controls should be

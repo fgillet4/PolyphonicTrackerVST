@@ -4919,26 +4919,24 @@ public:
     // Custom implementation to make children really work
     void addAndMakeVisible(juce::Component& childComponent)
     {
-        // Actually add the child component
-        addChildComponent(childComponent);
+        // Use the standard JUCE implementation instead of addChildComponent
+        // This was the critical issue! addChildComponent doesn't make things visible
+        Component::addAndMakeVisible(childComponent);
         
-        // Make it visible, with a size
+        // Extra steps to ensure visibility
         childComponent.setVisible(true);
         
-        // Force a bounds check for safety
-        if (childComponent.getWidth() <= 0 || childComponent.getHeight() <= 0) {
-            // If no size, give it a default size
-            childComponent.setBounds(20, 20, 300, 30);
-        }
+        // DO NOT force default bounds - this was causing layout issues!
+        // Let the resized() method handle proper positioning instead.
+        
+        // Ensure component is on top
+        childComponent.toFront(false);
         
         // Log for debugging
         juce::Logger::writeToLog("CustomPanel: Added child to " + title + 
                              " - visible: " + juce::String(childComponent.isVisible() ? "YES" : "NO") +
                              " bounds: " + childComponent.getBounds().toString());
                              
-        // Ensure it's really on top
-        childComponent.toFront(false);
-        
         // Force repaint
         repaint();
     }
@@ -4966,32 +4964,24 @@ public:
         
         // Add title with purple highlight
         g.setColour(juce::Colour(0xFF9C33FF)); // Purple
-        g.setFont(14.0f);
-        g.drawText(title, 10, 10, getWidth() - 20, 24, juce::Justification::left, true);
+        g.setFont(juce::Font(16.0f).boldened());
+        g.drawText(title, 20, 10, getWidth() - 40, 24, juce::Justification::left, true);
         
         // Add control box outline to show where controls should be
         g.setColour(juce::Colour(0xFF9C33FF).withAlpha(0.3f));
-        g.drawRect(20, 60, getWidth() - 40, getHeight() - 80, 1);
+        g.drawRect(20, 40, getWidth() - 40, getHeight() - 60, 1);
         
-        // Add control info text
-        g.setColour(juce::Colours::white);
-        g.setFont(12.0f);
-        g.drawText("Controls Active", 10, 34, 120, 20, juce::Justification::left, true);
-        
-        // Child count display
-        int childCount = getNumChildComponents();
-        g.drawText("Child Components: " + juce::String(childCount), 
-                  getWidth() - 150, 10, 140, 20, juce::Justification::right, true);
-        
-        // Debug - show panel is working
+        // Debug - show panel size
         juce::Logger::writeToLog("CustomPanel painted: " + title + " " + getBounds().toString());
         
-        // Draw red rectangles around all child components to make them visible
+        // For debugging only - show component bounds (can be disabled for production)
+        #ifdef DEBUG_LAYOUT
+        int childCount = getNumChildComponents();
         for (int i = 0; i < childCount; ++i) {
             if (auto* child = getChildComponent(i)) {
                 // Only draw if child has non-zero size
                 if (!child->getBounds().isEmpty()) {
-                    g.setColour(juce::Colours::red.withAlpha(0.3f));
+                    g.setColour(juce::Colours::red.withAlpha(0.2f));
                     g.fillRect(child->getBounds());
                     g.setColour(juce::Colours::red);
                     g.drawRect(child->getBounds(), 1);
@@ -5000,11 +4990,12 @@ public:
                 // If a slider or button, draw a more visible highlight
                 if (dynamic_cast<juce::Slider*>(child) || dynamic_cast<juce::Button*>(child) || 
                     dynamic_cast<juce::ComboBox*>(child)) {
-                    g.setColour(juce::Colours::yellow.withAlpha(0.5f));
+                    g.setColour(juce::Colours::yellow.withAlpha(0.3f));
                     g.drawRect(child->getBounds(), 2);
                 }
             }
         }
+        #endif
     }
     
 private:
@@ -5065,7 +5056,9 @@ SpectrogramComponent::SpectrogramComponent()
     : threshold(0.001f), // Lower threshold to catch smaller amplitudes
       useLogFrequency(true),
       showThreshold(true),
-      sampleRate(44100.0f)
+      sampleRate(44100.0f),
+      backgroundColour(juce::Colour(0xFF0A0A0A)),
+      foregroundColour(juce::Colour(0xFF9C33FF))
 {
     // Initialize FFT data
     fftData.resize(kMaxFFTSize, 0.0f);
@@ -5092,8 +5085,8 @@ SpectrogramComponent::~SpectrogramComponent()
 
 void SpectrogramComponent::paint(juce::Graphics& g)
 {
-    // Background
-    g.fillAll(juce::Colour(0xFF0A0A0A)); // Very dark background
+    // Background using custom color
+    g.fillAll(backgroundColour);
     
     // Get component dimensions
     int width = getWidth();
@@ -5107,11 +5100,13 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         return;
     }
 
-    // Draw debug text to confirm rendering
-    g.setColour(juce::Colours::white);
-    g.drawText("Spectrogram Active", getLocalBounds().withTrimmedBottom(20), juce::Justification::centredTop);
-    // Draw grid lines and frequency labels
-    g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+    // Draw header text with better styling
+    g.setColour(juce::Colour(0xFF9C33FF)); // Purple to match theme
+    g.setFont(juce::Font(16.0f, juce::Font::bold));
+    g.drawText("Frequency Spectrum", getLocalBounds().withTrimmedBottom(20), juce::Justification::centredTop);
+    
+    // Draw grid lines and frequency labels with better visibility
+    g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
     // Octave grid lines (if using log scale)
     if (useLogFrequency)
     {
@@ -5119,10 +5114,11 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         {
             float x = frequencyToX(static_cast<float>(freq));
             g.drawVerticalLine(static_cast<int>(x), 0.0f, static_cast<float>(height));
-            g.setColour(juce::Colours::grey);
+            g.setColour(juce::Colours::lightgrey);
             juce::String label = (freq >= 1000) ? juce::String(freq / 1000) + "kHz" : juce::String(freq) + "Hz";
+            g.setFont(juce::Font(12.0f, juce::Font::bold));
             g.drawText(label, static_cast<int>(x) - 20, height - 20, 40, 20, juce::Justification::centred, false);
-            g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+            g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
         }
     }
     else
@@ -5131,30 +5127,36 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         {
             float x = frequencyToX(static_cast<float>(freq));
             g.drawVerticalLine(static_cast<int>(x), 0.0f, static_cast<float>(height));
-            g.setColour(juce::Colours::grey);
+            g.setColour(juce::Colours::lightgrey);
             juce::String label = (freq >= 1000) ? juce::String(freq / 1000) + "kHz" : juce::String(freq) + "Hz";
+            g.setFont(juce::Font(12.0f, juce::Font::bold));
             g.drawText(label, static_cast<int>(x) - 20, height - 20, 40, 20, juce::Justification::centred, false);
-            g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+            g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
         }
     }
     
-    // Amplitude grid lines
+    // Amplitude grid lines with improved visibility
     for (float amp = 0.0f; amp <= 1.0f; amp += 0.2f)
     {
         float y = amplitudeToY(amp);
         g.drawHorizontalLine(static_cast<int>(y), 0.0f, static_cast<float>(width));
-        g.setColour(juce::Colours::grey);
+        g.setColour(juce::Colours::lightgrey);
         juce::String label = juce::String(static_cast<int>(amp * 100)) + "%";
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
         g.drawText(label, 5, static_cast<int>(y) - 10, 40, 20, juce::Justification::left, false);
-        g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+        g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
     }
     
-    // Draw threshold line if enabled
+    // Draw threshold line if enabled, using theme color
     if (showThreshold)
     {
-        g.setColour(juce::Colour(0xFF9C33FF).withAlpha(0.7f)); // Purple line
+        g.setColour(foregroundColour.withAlpha(0.7f));
         float thresholdY = amplitudeToY(threshold);
         g.drawHorizontalLine(static_cast<int>(thresholdY), 0.0f, static_cast<float>(width));
+        
+        // Label the threshold line
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
+        g.drawText("Threshold", 5, static_cast<int>(thresholdY) - 15, 80, 15, juce::Justification::left, false);
     }
     // Draw current spectrum (force visibility for debug)
     bool drewSomething = false;
@@ -5182,8 +5184,15 @@ void SpectrogramComponent::paint(juce::Graphics& g)
     }
     if (!drewSomething)
     {
-        g.setColour(juce::Colours::yellow);
-        g.drawText("No Data", getLocalBounds(), juce::Justification::centred);
+        g.setColour(foregroundColour); // Use theme color
+        g.setFont(juce::Font(18.0f, juce::Font::bold));
+        g.drawText("Waiting for Audio Input...", getLocalBounds(), juce::Justification::centred);
+        
+        // Add a helpful hint
+        g.setFont(juce::Font(14.0f));
+        g.drawText("Play your instrument to see the frequency spectrum", 
+                  getLocalBounds().withTrimmedTop(getHeight()/2 + 20), 
+                  juce::Justification::centredTop);
     }
     // Draw waterfall history
     {
@@ -5295,7 +5304,24 @@ void SpectrogramComponent::paint(juce::Graphics& g)
 
 void SpectrogramComponent::resized()
 {
-    // Nothing to do here
+    // Handle component resizing
+    int width = getWidth();
+    int height = getHeight();
+    
+    // Log the spectrogram size change for debugging
+    juce::Logger::writeToLog("SpectrogramComponent resized: " + juce::String(width) + "x" + juce::String(height));
+    
+    // Update frequency scale based on new dimensions
+    for (size_t i = 0; i < frequencyScale.size(); ++i)
+    {
+        float proportion = static_cast<float>(i) / static_cast<float>(kMaxFFTSize - 1);
+        frequencyScale[i] = (useLogFrequency)
+            ? kMinFrequency * std::pow(kMaxFrequency / kMinFrequency, proportion)
+            : kMinFrequency + (kMaxFrequency - kMinFrequency) * proportion;
+    }
+    
+    // Force a repaint when size changes
+    repaint();
 }
 
 void SpectrogramComponent::updateFFT(const float* newFFTData, int size)
@@ -5406,6 +5432,13 @@ void SpectrogramComponent::clearMarkedFrequencies()
     repaint();
 }
 
+void SpectrogramComponent::setColours(juce::Colour background, juce::Colour foreground)
+{
+    backgroundColour = background;
+    foregroundColour = foreground;
+    repaint();
+}
+
 void SpectrogramComponent::timerCallback()
 {
     // Trigger a repaint to update any animations
@@ -5483,6 +5516,9 @@ public:
     // Clear all marked frequencies
     void clearMarkedFrequencies();
     
+    // Set background and foreground colors
+    void setColours(juce::Colour background, juce::Colour foreground);
+    
 private:
     //==============================================================================
     void timerCallback() override;
@@ -5531,6 +5567,10 @@ private:
     
     // Thread safety
     juce::CriticalSection callbackLock;
+    
+    // Custom colors
+    juce::Colour backgroundColour;
+    juce::Colour foregroundColour;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramComponent)
@@ -5887,7 +5927,7 @@ PolyphonicTrackerAudioProcessorEditor::PolyphonicTrackerAudioProcessorEditor(Pol
     // Current note controls
     currentNoteLabel.setText("Current Note:", juce::dontSendNotification);
     currentNoteLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-    currentNoteLabel.setFont(juce::Font(14.0f, juce::Font::bold));
+    currentNoteLabel.setFont(juce::Font(14.0f).boldened());
     currentNoteLabel.setJustificationType(juce::Justification::left);
     mainPanel->addAndMakeVisible(currentNoteLabel);
     currentNoteLabel.setVisible(true);
@@ -5987,6 +6027,10 @@ PolyphonicTrackerAudioProcessorEditor::PolyphonicTrackerAudioProcessorEditor(Pol
     guitarStringCombo.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF222222));
     guitarStringCombo.setColour(juce::ComboBox::arrowColourId, juce::Colour(0xFF9C33FF));
     guitarPanel->addAndMakeVisible(guitarStringCombo);
+    
+    // Create the spectrogram component for visualization tab
+    spectrogramComponent = std::make_unique<SpectrogramComponent>();
+    // We'll set its bounds in resized() method
 
     guitarFretLabel.setText("Fret:", juce::dontSendNotification);
     guitarFretLabel.setColour(juce::Label::textColourId, juce::Colours::white);
@@ -6156,7 +6200,7 @@ void PolyphonicTrackerAudioProcessorEditor::paint(juce::Graphics& g)
     if (mainPanel && tabbedComponent.getCurrentTabIndex() == 0)
     {
         const int margin = 20;
-        const int labelWidth = 150;
+        // Label width not needed in emergency debug drawing
         const int controlHeight = 30;
         int y = 80; // Start below the tab bar
         
@@ -6330,63 +6374,70 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
 
     juce::Logger::writeToLog("Editor resized: " + area.toString());
     
-    // DIRECT APPROACH - Add components directly to the editor
-    // ======================================================
-    // Create absolute bounds for controls that will stay in a fixed position
-    // regardless of tab selection (emergency debugging approach)
+    // Common constants for consistent layout - use relative sizing!
     const int margin = 20;
-    const int topOffset = 80; // Below tab bar
-    const int labelWidth = 150;
-    const int controlHeight = 30;
-    int directY = topOffset;
+    const int smallMargin = 15;
+    const int topOffset = 40; // Space below tab bar
+    
+    // Use proportional sizing for better layout
+    const int labelWidth = juce::jmin(150, getWidth() / 5);
+    const int controlHeight = juce::jmin(32, getHeight() / 15); // Based on screen height
+    const int buttonHeight = juce::jmin(36, getHeight() / 14);  // Slightly taller
+    
+    // Calculate effective component width based on actual screen size
+    const float widthRatio = 0.85f; // Use 85% of available width
+    const int effectiveSliderWidth = static_cast<int>((getWidth() * widthRatio) - labelWidth - margin);
     
     // EMERGENCY DIRECT COMPONENT PLACEMENT
+    // Only visible when debugging, provide a safety net for interactions
+    int directY = topOffset;
+    
     if (emergencyButton == nullptr) {
-        // Set up emergency button (only if it doesn't exist yet)
+        // Set up emergency button with improved styling
         emergencyButton = std::make_unique<juce::TextButton>("EMERGENCY");
         emergencyButton->setButtonText("LEARN MODE");
-        emergencyButton->setColour(juce::TextButton::buttonColourId, juce::Colours::red);
+        emergencyButton->setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF552266)); // Dark purple
+        emergencyButton->setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFF9C33FF)); // Bright purple when on
         emergencyButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        emergencyButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+        emergencyButton->setLookAndFeel(&darkTheme);
         addAndMakeVisible(*emergencyButton);
         
-        // Create an emergency slider
+        // Create an emergency slider with consistent styling
         emergencySlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
         emergencySlider->setRange(21, 108, 1);
         emergencySlider->setValue(60);
-        emergencySlider->setColour(juce::Slider::thumbColourId, juce::Colours::yellow);
-        emergencySlider->setColour(juce::Slider::trackColourId, juce::Colours::red);
+        emergencySlider->setColour(juce::Slider::thumbColourId, juce::Colour(0xFF9C33FF)); // Purple thumb
+        emergencySlider->setColour(juce::Slider::trackColourId, juce::Colour(0xFF333333)); // Dark track
+        emergencySlider->setColour(juce::Slider::backgroundColourId, juce::Colour(0xFF191919));
+        emergencySlider->setLookAndFeel(&darkTheme);
         addAndMakeVisible(*emergencySlider);
         
         // Set up emergency button callback
         emergencyButton->onClick = [this]() {
-            // Toggle learning mode when the emergency button is clicked
             bool newState = !audioProcessor.isLearningModeActive();
             audioProcessor.setLearningModeActive(newState);
             emergencyButton->setButtonText(newState ? "LEARNING: ON" : "LEARNING: OFF");
-            
-            // Update visuals
             repaint();
         };
         
         // Set up emergency slider callback
         emergencySlider->onValueChange = [this]() {
-            // Update current note when the emergency slider changes
             int newNote = static_cast<int>(emergencySlider->getValue());
             audioProcessor.setCurrentLearningNote(newNote);
-            
-            // Update the display to show note name
             juce::String noteName = juce::MidiMessage::getMidiNoteName(newNote, true, true, 3);
             juce::Logger::writeToLog("Emergency slider changed: " + juce::String(newNote) + " (" + noteName + ")");
         };
     }
     
-    // Place emergency controls directly on the editor
-    emergencyButton->setBounds(margin, directY, 300, controlHeight);
-    directY += controlHeight + margin;
-    emergencySlider->setBounds(margin, directY, 300, controlHeight);
+    // Place emergency controls directly on the editor - use proportional width
+    const int emergencyControlWidth = static_cast<int>(getWidth() * 0.4f); // 40% of window width
+    emergencyButton->setBounds(margin, directY, emergencyControlWidth, buttonHeight);
+    directY += buttonHeight + smallMargin;
+    emergencySlider->setBounds(margin, directY, emergencyControlWidth, controlHeight);
     directY += controlHeight + margin;
     
-    // Add direct guitar controls
+    // Add direct guitar controls with improved styling
     if (emergencyGuitarControls == nullptr) {
         // Create a direct guitar string combo box
         emergencyGuitarControls = std::make_unique<juce::ComboBox>("Guitar String");
@@ -6395,21 +6446,27 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
         emergencyGuitarControls->setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF222222));
         emergencyGuitarControls->setColour(juce::ComboBox::textColourId, juce::Colours::white);
         emergencyGuitarControls->setColour(juce::ComboBox::outlineColourId, juce::Colour(0xFF9C33FF));
+        emergencyGuitarControls->setLookAndFeel(&darkTheme);
         addAndMakeVisible(*emergencyGuitarControls);
         
-        // Create a direct learn button
+        // Create a direct learn button with improved styling
         emergencyLearnButton = std::make_unique<juce::TextButton>("Guitar Learn");
         emergencyLearnButton->setButtonText("LEARN GUITAR POSITION");
         emergencyLearnButton->setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF552266));
+        emergencyLearnButton->setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFF9C33FF));
         emergencyLearnButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        emergencyLearnButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+        emergencyLearnButton->setLookAndFeel(&darkTheme);
         addAndMakeVisible(*emergencyLearnButton);
         
-        // Create the fret slider
+        // Create the fret slider with consistent styling
         emergencyFretSlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
         emergencyFretSlider->setRange(0, 24, 1);
         emergencyFretSlider->setValue(0);
-        emergencyFretSlider->setColour(juce::Slider::thumbColourId, juce::Colours::green);
+        emergencyFretSlider->setColour(juce::Slider::thumbColourId, juce::Colour(0xFF9C33FF));
         emergencyFretSlider->setColour(juce::Slider::trackColourId, juce::Colour(0xFF333333));
+        emergencyFretSlider->setColour(juce::Slider::backgroundColourId, juce::Colour(0xFF191919));
+        emergencyFretSlider->setLookAndFeel(&darkTheme);
         addAndMakeVisible(*emergencyFretSlider);
         
         // Set up learn button callback
@@ -6420,97 +6477,125 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
             audioProcessor.setLearningModeActive(true);
             audioProcessor.setCurrentLearningNote(midiNote);
             
-            // Update button text to show what's being learned
             emergencyLearnButton->setButtonText("Learning: String " + juce::String(string + 1) + 
                                             " Fret " + juce::String(fret) + 
                                             " (MIDI: " + juce::String(midiNote) + ")");
         };
     }
     
-    // Position direct guitar controls
-    emergencyGuitarControls->setBounds(margin, directY, 200, controlHeight);
-    directY += controlHeight + margin;
-    emergencyFretSlider->setBounds(margin, directY, 300, controlHeight);
-    directY += controlHeight + margin;
-    emergencyLearnButton->setBounds(margin, directY, 300, 40);
-    directY += 40 + margin;
+    // Position direct guitar controls with proportional sizes
+    const int comboWidth = std::min(200, static_cast<int>(getWidth() * 0.3f)); // Max 30% of window width
+    emergencyGuitarControls->setBounds(margin, directY, comboWidth, controlHeight);
+    directY += controlHeight + smallMargin;
+    emergencyFretSlider->setBounds(margin, directY, emergencyControlWidth, controlHeight);
+    directY += controlHeight + smallMargin;
+    emergencyLearnButton->setBounds(margin, directY, emergencyControlWidth, buttonHeight);
+    directY += buttonHeight + margin;
     
     // Place a debug text area at the bottom of the screen
-    directY = getHeight() - 150 - margin;
-    m_debugTextEditor.setBounds(margin, directY, getWidth() - margin*2, 150);
+    const int debugAreaHeight = 120;
+    directY = getHeight() - debugAreaHeight - margin;
+    m_debugTextEditor.setBounds(margin, directY, getWidth() - margin*2, debugAreaHeight);
     addAndMakeVisible(m_debugTextEditor);
     
-    // Main panel layout - use our stored pointer instead of casting
+    // ==========================================
+    // MAIN PANEL LAYOUT - Controls Tab
+    // ==========================================
     if (mainPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in main panel: " + mainPanel->getBounds().toString());
-        int y = margin;
-
-        // Recreate controls directly
-        // CRITICAL FIX: Force recreate controls on the panel with proper bounds
+        
+        // Get the full bounds of the panel
+        auto fullBounds = mainPanel->getLocalBounds();
+        juce::Logger::writeToLog("Main panel full bounds: " + fullBounds.toString());
+        
+        // Calculate usable content area with margins
+        auto contentBounds = fullBounds.reduced(margin);
+        
+        // Leave space at top for the title
+        contentBounds.removeFromTop(topOffset);
+        
+        // Use proportional control spacing, evenly distributed through available height
+        const int availableHeight = contentBounds.getHeight();
+        const int controlCount = 7; // Toggle + 6 sliders
+        const int controlSpacing = (availableHeight - (controlCount * controlHeight)) / (controlCount + 2);
+        const int effectiveWidth = contentBounds.getWidth();
+        const int sliderWidth = effectiveWidth - labelWidth - margin;
+        
+        // Clear panel and start fresh
         mainPanel->removeAllChildren();
         
-        // Re-add components with proper bounds
-        // Learning mode toggle
-        learningModeToggle.setBounds(margin, y, mainPanel->getWidth() - margin * 2, controlHeight);
+        // Learning mode toggle - positioned at the top with good width
+        const int toggleWidth = std::min(300, static_cast<int>(effectiveWidth * 0.5f));
+        learningModeToggle.setBounds(contentBounds.getX(), contentBounds.getY(), 
+                                    toggleWidth, buttonHeight);
+        learningModeToggle.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
+        learningModeToggle.setColour(juce::ToggleButton::tickColourId, juce::Colour(0xFF9C33FF)); // Purple
+        learningModeToggle.setColour(juce::ToggleButton::tickDisabledColourId, juce::Colour(0xFF666666));
         mainPanel->addAndMakeVisible(learningModeToggle);
-        juce::Logger::writeToLog("- learningModeToggle: " + learningModeToggle.getBounds().toString());
-        y += controlHeight + margin;
-
-        // Current note slider and label
-        currentNoteLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(currentNoteLabel);
         
-        currentNoteSlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(currentNoteSlider);
-        juce::Logger::writeToLog("- currentNoteSlider: " + currentNoteSlider.getBounds().toString());
-        y += controlHeight + margin;
+        // Set up control bounds for the first slider - ensure good vertical spacing
+        auto controlBounds = contentBounds.withTrimmedTop(buttonHeight + controlSpacing);
         
-        // Max polyphony
-        maxPolyphonyLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(maxPolyphonyLabel);
+        // Log the actual spacing we're using for debugging
+        juce::Logger::writeToLog("Main panel control spacing: " + juce::String(controlSpacing) + 
+                              ", Available height: " + juce::String(availableHeight));
         
-        maxPolyphonySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(maxPolyphonySlider);
-        y += controlHeight + margin;
+        // Layout helper function for consistent control positioning
+        auto positionControl = [&](juce::Label& label, juce::Slider& slider) {
+            // Position label
+            label.setBounds(controlBounds.getX(), controlBounds.getY(), 
+                           labelWidth, controlHeight);
+            
+            // Use boldened() method for text styling
+            label.setFont(juce::Font(14.0f).boldened());
+            label.setColour(juce::Label::textColourId, juce::Colours::white);
+            mainPanel->addAndMakeVisible(label);
+            
+            // Position slider - use all remaining width
+            slider.setBounds(controlBounds.getX() + labelWidth, controlBounds.getY(), 
+                            sliderWidth, controlHeight);
+            slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xFF9C33FF));
+            slider.setColour(juce::Slider::trackColourId, juce::Colour(0xFF333333));
+            slider.setColour(juce::Slider::backgroundColourId, juce::Colour(0xFF191919));
+            slider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+            slider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xFF444444));
+            slider.setLookAndFeel(&darkTheme);
+            mainPanel->addAndMakeVisible(slider);
+            
+            // Log the bounds for debugging
+            juce::Logger::writeToLog("Control: " + label.getText() + " - Label: " + label.getBounds().toString() + 
+                                  ", Slider: " + slider.getBounds().toString());
+            
+            // Move bound down for next control
+            controlBounds.translate(0, controlHeight + controlSpacing);
+        };
         
-        // MIDI Channel
-        midiChannelLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(midiChannelLabel);
+        // Position all controls with consistent styling
+        positionControl(currentNoteLabel, currentNoteSlider);
+        positionControl(maxPolyphonyLabel, maxPolyphonySlider);
+        positionControl(midiChannelLabel, midiChannelSlider);
+        positionControl(midiVelocityLabel, midiVelocitySlider);
+        positionControl(noteOnDelayLabel, noteOnDelaySlider);
+        positionControl(noteOffDelayLabel, noteOffDelaySlider);
         
-        midiChannelSlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(midiChannelSlider);
-        y += controlHeight + margin;
+        // Debug text editor at the bottom - use remaining space
+        // Calculate how much height is left after controls
+        const int totalControlsHeight = controlCount * controlHeight + (controlCount - 1) * controlSpacing;
+        const int remainingHeight = contentBounds.getHeight() - totalControlsHeight - buttonHeight - controlSpacing;
+        const int debugPanelHeight = juce::jmax(100, remainingHeight - (margin * 2));
         
-        // MIDI Velocity
-        midiVelocityLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(midiVelocityLabel);
-        
-        midiVelocitySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(midiVelocitySlider);
-        y += controlHeight + margin;
-        
-        // Note On Delay
-        noteOnDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(noteOnDelayLabel);
-        
-        noteOnDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(noteOnDelaySlider);
-        y += controlHeight + margin;
-        
-        // Note Off Delay
-        noteOffDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(noteOffDelayLabel);
-        
-        noteOffDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        mainPanel->addAndMakeVisible(noteOffDelaySlider);
-        y += controlHeight + margin;
-
-        // Debug text editor
-        m_debugTextEditor.setBounds(margin, y, mainPanel->getWidth() - margin * 2, 150);
+        // Position at the bottom
+        const int debugY = contentBounds.getBottom() - debugPanelHeight - margin;
+        m_debugTextEditor.setBounds(contentBounds.getX(), debugY, effectiveWidth, debugPanelHeight);
+        m_debugTextEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF111111));
+        m_debugTextEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
         mainPanel->addAndMakeVisible(m_debugTextEditor);
         
-        // Force repaint
+        juce::Logger::writeToLog("Debug editor positioned at: " + m_debugTextEditor.getBounds().toString() +
+                              ", remainingHeight: " + juce::String(remainingHeight));
+        
+        // Force repaint for visibility
         mainPanel->repaint();
     }
     else
@@ -6518,48 +6603,112 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
         juce::Logger::writeToLog("ERROR: Main panel is null in resized()");
     }
 
-    // Guitar panel layout - use our stored pointer instead of casting
+    // ==========================================
+    // GUITAR PANEL LAYOUT - Guitar Mode Tab
+    // ==========================================
     if (guitarPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in guitar panel");
-        // Clear existing children
+        
+        // Get the full bounds of the panel
+        auto fullBounds = guitarPanel->getLocalBounds();
+        juce::Logger::writeToLog("Guitar panel full bounds: " + fullBounds.toString());
+        
+        // Calculate usable content area with margins
+        auto contentBounds = fullBounds.reduced(margin);
+        
+        // Leave space at top for the title
+        contentBounds.removeFromTop(topOffset);
+        
+        // Calculate proportional spacing and sizing
+        const int availableHeight = contentBounds.getHeight();
+        const int controlCount = 4; // string combo, fret slider, learn button, status label
+        const int controlSpacing = availableHeight / 12; // Distribute controls evenly
+        const int effectiveWidth = contentBounds.getWidth();
+        const int sliderWidth = effectiveWidth - labelWidth - margin;
+        const int comboWidth = std::min(300, static_cast<int>(effectiveWidth * 0.5f));
+        
+        // Log available space for debugging
+        juce::Logger::writeToLog("Guitar panel available height: " + juce::String(availableHeight) + 
+                              ", controlSpacing: " + juce::String(controlSpacing));
+        
+        // Clear existing children and start fresh
         guitarPanel->removeAllChildren();
         
-        const int margin = 20;
-        const int labelWidth = 150;
-        const int controlHeight = 30;
-        int y = margin * 2;
-
-        // Guitar string controls
-        guitarStringLabel.setBounds(margin, y, labelWidth, controlHeight);
+        // Use a vertical layout for clean arrangement - leave space to distribute controls
+        // Position first control at 20% down the available height for better vertical distribution
+        auto rowBounds = contentBounds;
+        rowBounds.setY(contentBounds.getY() + static_cast<int>(availableHeight * 0.2f));
+        
+        // Guitar string controls in a row
+        guitarStringLabel.setBounds(rowBounds.getX(), rowBounds.getY(), labelWidth, controlHeight);
+        guitarStringLabel.setFont(juce::Font(14.0f).boldened());
+        guitarStringLabel.setColour(juce::Label::textColourId, juce::Colours::white);
         guitarPanel->addAndMakeVisible(guitarStringLabel);
         
-        guitarStringCombo.setBounds(margin + labelWidth, y, 200, controlHeight);
+        guitarStringCombo.setBounds(rowBounds.getX() + labelWidth, rowBounds.getY(), comboWidth, controlHeight);
+        guitarStringCombo.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF222222));
+        guitarStringCombo.setColour(juce::ComboBox::textColourId, juce::Colours::white);
+        guitarStringCombo.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xFF9C33FF));
+        guitarStringCombo.setLookAndFeel(&darkTheme);
         guitarPanel->addAndMakeVisible(guitarStringCombo);
-        juce::Logger::writeToLog("- guitarStringCombo: " + guitarStringCombo.getBounds().toString());
-        y += controlHeight + margin;
-
-        // Guitar fret controls
-        guitarFretLabel.setBounds(margin, y, labelWidth, controlHeight);
+        
+        juce::Logger::writeToLog("Guitar string combo bounds: " + guitarStringCombo.getBounds().toString());
+        
+        // Guitar fret controls in the next row
+        rowBounds.translate(0, controlHeight + controlSpacing);
+        
+        guitarFretLabel.setBounds(rowBounds.getX(), rowBounds.getY(), labelWidth, controlHeight);
+        guitarFretLabel.setFont(juce::Font(14.0f).boldened());
+        guitarFretLabel.setColour(juce::Label::textColourId, juce::Colours::white);
         guitarPanel->addAndMakeVisible(guitarFretLabel);
         
-        guitarFretSlider.setBounds(margin + labelWidth, y, guitarPanel->getWidth() - margin * 3 - labelWidth, controlHeight);
+        guitarFretSlider.setBounds(rowBounds.getX() + labelWidth, rowBounds.getY(), sliderWidth, controlHeight);
+        guitarFretSlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xFF9C33FF));
+        guitarFretSlider.setColour(juce::Slider::trackColourId, juce::Colour(0xFF333333));
+        guitarFretSlider.setColour(juce::Slider::backgroundColourId, juce::Colour(0xFF191919));
+        guitarFretSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+        guitarFretSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xFF444444));
+        guitarFretSlider.setLookAndFeel(&darkTheme);
         guitarPanel->addAndMakeVisible(guitarFretSlider);
-        juce::Logger::writeToLog("- guitarFretSlider: " + guitarFretSlider.getBounds().toString());
-        y += controlHeight + margin * 2;
-
-        // Learn button - make it bigger
-        learnFretButton.setBounds(margin, y, 300, 40);
-        guitarPanel->addAndMakeVisible(learnFretButton);
-        juce::Logger::writeToLog("- learnFretButton: " + learnFretButton.getBounds().toString());
-        y += 50;
-
-        // Status label
-        learningStatusLabel.setBounds(margin, y, guitarPanel->getWidth() - margin * 2, 40);
-        guitarPanel->addAndMakeVisible(learningStatusLabel);
-        juce::Logger::writeToLog("- learningStatusLabel: " + learningStatusLabel.getBounds().toString());
         
-        // Force repaint
+        juce::Logger::writeToLog("Guitar fret slider bounds: " + guitarFretSlider.getBounds().toString());
+        
+        // Learn button centered with proper sizing - make it large and prominent
+        // Place the button in the middle of the panel for better visual balance
+        rowBounds.translate(0, controlHeight + controlSpacing * 2);
+        const int learnButtonWidth = std::min(350, static_cast<int>(effectiveWidth * 0.7f)); // Use up to 70% of width
+        const int learnButtonHeight = buttonHeight + 10; // Make it taller for emphasis
+        const int learnButtonX = contentBounds.getX() + (effectiveWidth - learnButtonWidth) / 2; // Center horizontally
+        
+        learnFretButton.setBounds(learnButtonX, rowBounds.getY(), learnButtonWidth, learnButtonHeight);
+        learnFretButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF552266));
+        learnFretButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFF9C33FF));
+        learnFretButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        learnFretButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+        learnFretButton.setLookAndFeel(&darkTheme);
+        guitarPanel->addAndMakeVisible(learnFretButton);
+        
+        juce::Logger::writeToLog("Learn button bounds: " + learnFretButton.getBounds().toString());
+        
+        // Status label below button - make it large and clear
+        rowBounds.translate(0, learnButtonHeight + controlSpacing);
+        learningStatusLabel.setBounds(contentBounds.getX(), rowBounds.getY(), effectiveWidth, 
+                                    juce::jmin(50, static_cast<int>(availableHeight * 0.15f))); // Up to 15% of available height
+        learningStatusLabel.setJustificationType(juce::Justification::centred);
+        learningStatusLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+        learningStatusLabel.setFont(juce::Font(16.0f).boldened());
+        guitarPanel->addAndMakeVisible(learningStatusLabel);
+        
+        // Calculate spacing to verify layout
+        const int usedHeight = (controlHeight * 2) + learnButtonHeight + 50 + (controlSpacing * 3);
+        const int percentUsed = static_cast<int>((usedHeight * 100.0f) / availableHeight);
+        juce::Logger::writeToLog("Guitar panel layout - Used height: " + juce::String(usedHeight) + 
+                              " (" + juce::String(percentUsed) + "% of available)");
+        
+        juce::Logger::writeToLog("Status label bounds: " + learningStatusLabel.getBounds().toString());
+        
+        // Force repaint for visibility
         guitarPanel->repaint();
     }
     else
@@ -6567,33 +6716,85 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
         juce::Logger::writeToLog("ERROR: Guitar panel is null in resized()");
     }
 
-    // Visualization panel layout - use our stored pointer instead of casting
+    // ==========================================
+    // VISUALIZATION PANEL LAYOUT
+    // ==========================================
     if (visualPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in visualization panel");
-        // Clear existing children
+        
+        // Get the full bounds of the panel
+        auto fullBounds = visualPanel->getLocalBounds();
+        juce::Logger::writeToLog("Visualization panel full bounds: " + fullBounds.toString());
+        
+        // Calculate usable content area with margins - use smaller margins for visualization
+        auto contentBounds = fullBounds.reduced(margin);
+        const int availableHeight = contentBounds.getHeight();
+        const int availableWidth = contentBounds.getWidth();
+        
+        // Leave space at top for the title
+        contentBounds.removeFromTop(topOffset);
+        
+        // Clear existing children and force recreation
         visualPanel->removeAllChildren();
         
-        auto bounds = visualPanel->getLocalBounds().reduced(20);
-        auto topSection = bounds.removeFromTop(bounds.getHeight() / 2);
-
-        // Jay image
+        // For the visualization panel, use a balanced split between image and spectrum
+        // The visualization should use most of the space since it's more important
+        
+        // Use 25% for image, 75% for spectrogram - gives better proportions
+        const float jayImageHeightRatio = 0.25f; 
+        auto imageHeight = static_cast<int>(contentBounds.getHeight() * jayImageHeightRatio);
+        
+        // Reserve the top portion for the image with a gap below
+        auto imageBounds = contentBounds.removeFromTop(imageHeight);
+        contentBounds.removeFromTop(10); // Add a small gap between components
+        
+        // The remaining ~75% of space is for the spectrogram - critical component
+        auto spectrogramBounds = contentBounds;
+        
+        // Log bounds for debugging
+        juce::Logger::writeToLog("Visualization layout - availableHeight: " + juce::String(availableHeight) + 
+                              ", imageHeight: " + juce::String(imageHeight) + 
+                              ", spectrogramHeight: " + juce::String(spectrogramBounds.getHeight()));
+        
+        juce::Logger::writeToLog("Image bounds: " + imageBounds.toString());
+        juce::Logger::writeToLog("Spectrogram bounds: " + spectrogramBounds.toString());
+        
+        // Jay image on top portion
         if (jayImageComponent)
         {
-            jayImageComponent->setBounds(topSection);
+            // Use the full width and calculated height
+            jayImageComponent->setBounds(imageBounds);
             visualPanel->addAndMakeVisible(*jayImageComponent);
-            juce::Logger::writeToLog("- jayImageComponent: " + jayImageComponent->getBounds().toString());
+            juce::Logger::writeToLog("Set Jay image bounds: " + jayImageComponent->getBounds().toString());
         }
 
-        // Spectrogram
+        // Spectrogram on bottom portion - this should be the MAIN element
         if (spectrogramComponent)
         {
-            spectrogramComponent->setBounds(bounds);
+            // Use the FULL remaining space for the spectrogram (reduced only slightly for border padding)
+            // This is critical to make the visualization visible and useful
+            spectrogramComponent->setBounds(spectrogramBounds.reduced(5));
+            
+            // Configure spectrogram for better visibility
+            spectrogramComponent->setColours(juce::Colours::black, juce::Colour(0xFF9C33FF));
+            spectrogramComponent->setLookAndFeel(&darkTheme);
+            
+            // Add it with high visibility
             visualPanel->addAndMakeVisible(*spectrogramComponent);
-            juce::Logger::writeToLog("- spectrogramComponent: " + spectrogramComponent->getBounds().toString());
+            
+            // Force the component to be on top and visible
+            spectrogramComponent->setAlwaysOnTop(true);
+            spectrogramComponent->toFront(false);
+            
+            juce::Logger::writeToLog("Set spectrogram bounds: " + spectrogramComponent->getBounds().toString() +
+                                  ", visible: " + juce::String(spectrogramComponent->isVisible() ? "YES" : "NO"));
+            
+            // Force spectrogram to repaint immediately
+            spectrogramComponent->repaint();
         }
         
-        // Force repaint
+        // Force repaint for visibility
         visualPanel->repaint();
     }
     else
@@ -6674,7 +6875,7 @@ public:
     
     // Override to make sliders more visible
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
-                           float sliderPos, float minSliderPos, float maxSliderPos,
+                           float sliderPos, float /*minSliderPos*/, float /*maxSliderPos*/,
                            const juce::Slider::SliderStyle style, juce::Slider& slider) override
     {
         // Draw a more visible track

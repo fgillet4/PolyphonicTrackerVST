@@ -332,13 +332,70 @@ void PolyphonicTrackerAudioProcessorEditor::paint(juce::Graphics& g)
     // Fill with dark background
     g.fillAll(juce::Colour(0xFF000000));
     
-    // Draw some debug text to verify the paint method is working
+    // Draw debug information
     g.setColour(juce::Colours::white);
     g.setFont(15.0f);
-    g.drawText("Polyphonic Tracker VST", getLocalBounds(), juce::Justification::topLeft, true);
+    g.drawText("Polyphonic Tracker VST", 10, 5, getWidth() - 20, 20, juce::Justification::topLeft, true);
+    
+    // EMERGENCY DEBUG MODE - Draw all components directly in the main paint method
+    // for visibility testing
+    if (mainPanel && tabbedComponent.getCurrentTabIndex() == 0)
+    {
+        const int margin = 20;
+        const int labelWidth = 150;
+        const int controlHeight = 30;
+        int y = 80; // Start below the tab bar
+        
+        // Draw emergency button overlay
+        g.setColour(juce::Colours::red.withAlpha(0.7f));
+        g.fillRect(margin, y, 300, controlHeight);
+        g.setColour(juce::Colours::white);
+        g.drawText("Learning Mode Toggle (Emergency Draw)", margin + 5, y, 280, controlHeight, juce::Justification::centredLeft);
+        y += controlHeight + margin;
+        
+        // Draw emergency slider overlay
+        g.setColour(juce::Colours::blue.withAlpha(0.7f));
+        g.fillRect(margin, y, 300, controlHeight);
+        g.setColour(juce::Colours::white);
+        g.drawText("Current Note Slider (Emergency Draw)", margin + 5, y, 280, controlHeight, juce::Justification::centredLeft);
+        y += controlHeight + margin;
+    }
+    else if (guitarPanel && tabbedComponent.getCurrentTabIndex() == 1)
+    {
+        const int margin = 20;
+        const int controlHeight = 30;
+        int y = 80; // Start below the tab bar
+        
+        // Draw emergency guitar string combo overlay
+        g.setColour(juce::Colours::green.withAlpha(0.7f));
+        g.fillRect(margin, y, 300, controlHeight);
+        g.setColour(juce::Colours::white);
+        g.drawText("Guitar String Combo (Emergency Draw)", margin + 5, y, 280, controlHeight, juce::Justification::centredLeft);
+        y += controlHeight + margin;
+        
+        // Draw emergency fret slider overlay
+        g.setColour(juce::Colours::orange.withAlpha(0.7f));
+        g.fillRect(margin, y, 300, controlHeight);
+        g.setColour(juce::Colours::white);
+        g.drawText("Guitar Fret Slider (Emergency Draw)", margin + 5, y, 280, controlHeight, juce::Justification::centredLeft);
+        y += controlHeight + margin;
+        
+        // Draw emergency learn button overlay
+        g.setColour(juce::Colours::magenta.withAlpha(0.7f));
+        g.fillRect(margin, y, 300, 40);
+        g.setColour(juce::Colours::white);
+        g.drawText("Learn Button (Emergency Draw)", margin + 5, y, 280, 40, juce::Justification::centredLeft);
+    }
+    
+    // Show controls visibility stats
+    g.setColour(juce::Colours::yellow);
+    g.setFont(13.0f);
+    g.drawText("Main Panel: " + (mainPanel ? juce::String(mainPanel->getNumChildComponents()) : "null") + 
+              " Guitar: " + (guitarPanel ? juce::String(guitarPanel->getNumChildComponents()) : "null"),
+              10, getHeight() - 40, getWidth() - 20, 20, juce::Justification::bottomLeft);
     
     // Add debug log to check if paint is being called
-    juce::Logger::writeToLog("Main editor paint called");
+    juce::Logger::writeToLog("Main editor paint called (tab: " + juce::String(tabbedComponent.getCurrentTabIndex()) + ")");
 }
 
 void PolyphonicTrackerAudioProcessorEditor::timerCallback()
@@ -362,11 +419,83 @@ void PolyphonicTrackerAudioProcessorEditor::timerCallback()
         m_debugTextEditor.setText(lastLines);
     }
     
-    // Periodically log component visibility
+    // Periodically update debug info and force components to be visible
     if (counter % 10 == 0) {
         juce::Logger::writeToLog("Timer: Components visible check:");
         juce::Logger::writeToLog(" - Learning toggle visible: " + juce::String(learningModeToggle.isVisible() ? "Yes" : "No"));
         juce::Logger::writeToLog(" - Current tab: " + juce::String(tabbedComponent.getCurrentTabIndex()));
+        
+        // FORCE DIRECT PAINTING ON MAIN PANEL to try to get the components visible
+        if (mainPanel) {
+            juce::Logger::writeToLog("Forcing bounds check for main panel controls");
+            
+            // Add debug bounds information
+            juce::Logger::writeToLog(" - learningModeToggle: " + learningModeToggle.getBounds().toString());
+            juce::Logger::writeToLog(" - currentNoteSlider: " + currentNoteSlider.getBounds().toString());
+            juce::Logger::writeToLog(" - mainPanel: " + mainPanel->getBounds().toString());
+            
+            // Attempt to force visibility of components by bringing to front
+            learningModeToggle.toFront(false);
+            currentNoteSlider.toFront(false);
+            maxPolyphonySlider.toFront(false);
+            midiChannelSlider.toFront(false);
+            midiVelocitySlider.toFront(false);
+            noteOnDelaySlider.toFront(false);
+            noteOffDelaySlider.toFront(false);
+        }
+        
+        // Force guitar panel controls to front
+        if (guitarPanel) {
+            juce::Logger::writeToLog("Forcing bounds check for guitar panel controls");
+            juce::Logger::writeToLog(" - learnFretButton: " + learnFretButton.getBounds().toString());
+            juce::Logger::writeToLog(" - guitarStringCombo: " + guitarStringCombo.getBounds().toString());
+            juce::Logger::writeToLog(" - guitarPanel: " + guitarPanel->getBounds().toString());
+            
+            // Bring guitar controls to front
+            guitarStringCombo.toFront(false);
+            guitarFretSlider.toFront(false);
+            learnFretButton.toFront(false);
+            learningStatusLabel.toFront(false);
+        }
+        
+        // Trigger a repaint throughout the GUI
+        this->repaint(); 
+    }
+    
+    // Force complete repaint every 2 seconds
+    if (counter % 60 == 0) {
+        // Special debug to show bounds of all controls in the log
+        juce::Logger::writeToLog("*** CONTROL VISIBILITY REPORT ***");
+        juce::Logger::writeToLog("Main toggle: " + learningModeToggle.getBounds().toString() + 
+                               " visible: " + juce::String(learningModeToggle.isVisible() ? "YES" : "NO"));
+        juce::Logger::writeToLog("Current note slider: " + currentNoteSlider.getBounds().toString() + 
+                               " visible: " + juce::String(currentNoteSlider.isVisible() ? "YES" : "NO"));
+        juce::Logger::writeToLog("Button: " + learnFretButton.getBounds().toString() + 
+                               " visible: " + juce::String(learnFretButton.isVisible() ? "YES" : "NO"));
+                               
+        // Emergency hack - recreate buttons
+        if (mainPanel) {
+            // The extreme fallback approach - recreate the button and add it directly
+            juce::Logger::writeToLog("EMERGENCY: Creating direct button on main panel");
+            mainPanel->removeChildComponent(&learningModeToggle);
+            
+            // Create a direct button bypass
+            emergencyButton = std::make_unique<juce::TextButton>("Emergency Button");
+            emergencyButton->setButtonText("Learning Mode (Direct)");
+            emergencyButton->setColour(juce::TextButton::buttonColourId, juce::Colours::red);
+            emergencyButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+            mainPanel->addAndMakeVisible(*emergencyButton);
+            emergencyButton->setBounds(20, 80, 300, 30);
+            emergencyButton->setVisible(true);
+            emergencyButton->toFront(false);
+        }
+        
+        // Force repaint everything
+        tabbedComponent.repaint();
+        if (mainPanel) mainPanel->repaint();
+        if (guitarPanel) guitarPanel->repaint();
+        if (visualPanel) visualPanel->repaint();
+        this->repaint();
     }
     
     // Force repaint of components to ensure they're visible
@@ -387,60 +516,185 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
 
     juce::Logger::writeToLog("Editor resized: " + area.toString());
     
+    // DIRECT APPROACH - Add components directly to the editor
+    // ======================================================
+    // Create absolute bounds for controls that will stay in a fixed position
+    // regardless of tab selection (emergency debugging approach)
+    const int margin = 20;
+    const int topOffset = 80; // Below tab bar
+    const int labelWidth = 150;
+    const int controlHeight = 30;
+    int directY = topOffset;
+    
+    // EMERGENCY DIRECT COMPONENT PLACEMENT
+    if (emergencyButton == nullptr) {
+        // Set up emergency button (only if it doesn't exist yet)
+        emergencyButton = std::make_unique<juce::TextButton>("EMERGENCY");
+        emergencyButton->setButtonText("LEARN MODE");
+        emergencyButton->setColour(juce::TextButton::buttonColourId, juce::Colours::red);
+        emergencyButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        addAndMakeVisible(*emergencyButton);
+        
+        // Create an emergency slider
+        emergencySlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+        emergencySlider->setRange(21, 108, 1);
+        emergencySlider->setValue(60);
+        emergencySlider->setColour(juce::Slider::thumbColourId, juce::Colours::yellow);
+        emergencySlider->setColour(juce::Slider::trackColourId, juce::Colours::red);
+        addAndMakeVisible(*emergencySlider);
+        
+        // Set up emergency button callback
+        emergencyButton->onClick = [this]() {
+            // Toggle learning mode when the emergency button is clicked
+            bool newState = !audioProcessor.isLearningModeActive();
+            audioProcessor.setLearningModeActive(newState);
+            emergencyButton->setButtonText(newState ? "LEARNING: ON" : "LEARNING: OFF");
+            
+            // Update visuals
+            repaint();
+        };
+        
+        // Set up emergency slider callback
+        emergencySlider->onValueChange = [this]() {
+            // Update current note when the emergency slider changes
+            int newNote = static_cast<int>(emergencySlider->getValue());
+            audioProcessor.setCurrentLearningNote(newNote);
+            
+            // Update the display to show note name
+            juce::String noteName = juce::MidiMessage::getMidiNoteName(newNote, true, true, 3);
+            juce::Logger::writeToLog("Emergency slider changed: " + juce::String(newNote) + " (" + noteName + ")");
+        };
+    }
+    
+    // Place emergency controls directly on the editor
+    emergencyButton->setBounds(margin, directY, 300, controlHeight);
+    directY += controlHeight + margin;
+    emergencySlider->setBounds(margin, directY, 300, controlHeight);
+    directY += controlHeight + margin;
+    
+    // Add direct guitar controls
+    if (emergencyGuitarControls == nullptr) {
+        // Create a direct guitar string combo box
+        emergencyGuitarControls = std::make_unique<juce::ComboBox>("Guitar String");
+        emergencyGuitarControls->addItemList({"E (low)", "A", "D", "G", "B", "E (high)"}, 1);
+        emergencyGuitarControls->setSelectedItemIndex(0);
+        emergencyGuitarControls->setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF222222));
+        emergencyGuitarControls->setColour(juce::ComboBox::textColourId, juce::Colours::white);
+        emergencyGuitarControls->setColour(juce::ComboBox::outlineColourId, juce::Colour(0xFF9C33FF));
+        addAndMakeVisible(*emergencyGuitarControls);
+        
+        // Create a direct learn button
+        emergencyLearnButton = std::make_unique<juce::TextButton>("Guitar Learn");
+        emergencyLearnButton->setButtonText("LEARN GUITAR POSITION");
+        emergencyLearnButton->setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF552266));
+        emergencyLearnButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        addAndMakeVisible(*emergencyLearnButton);
+        
+        // Create the fret slider
+        emergencyFretSlider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+        emergencyFretSlider->setRange(0, 24, 1);
+        emergencyFretSlider->setValue(0);
+        emergencyFretSlider->setColour(juce::Slider::thumbColourId, juce::Colours::green);
+        emergencyFretSlider->setColour(juce::Slider::trackColourId, juce::Colour(0xFF333333));
+        addAndMakeVisible(*emergencyFretSlider);
+        
+        // Set up learn button callback
+        emergencyLearnButton->onClick = [this]() {
+            int string = emergencyGuitarControls->getSelectedItemIndex();
+            int fret = static_cast<int>(emergencyFretSlider->getValue());
+            int midiNote = audioProcessor.setCurrentGuitarPosition(string, fret);
+            audioProcessor.setLearningModeActive(true);
+            audioProcessor.setCurrentLearningNote(midiNote);
+            
+            // Update button text to show what's being learned
+            emergencyLearnButton->setButtonText("Learning: String " + juce::String(string + 1) + 
+                                            " Fret " + juce::String(fret) + 
+                                            " (MIDI: " + juce::String(midiNote) + ")");
+        };
+    }
+    
+    // Position direct guitar controls
+    emergencyGuitarControls->setBounds(margin, directY, 200, controlHeight);
+    directY += controlHeight + margin;
+    emergencyFretSlider->setBounds(margin, directY, 300, controlHeight);
+    directY += controlHeight + margin;
+    emergencyLearnButton->setBounds(margin, directY, 300, 40);
+    directY += 40 + margin;
+    
+    // Place a debug text area at the bottom of the screen
+    directY = getHeight() - 150 - margin;
+    m_debugTextEditor.setBounds(margin, directY, getWidth() - margin*2, 150);
+    addAndMakeVisible(m_debugTextEditor);
+    
     // Main panel layout - use our stored pointer instead of casting
     if (mainPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in main panel: " + mainPanel->getBounds().toString());
-        const int margin = 20;
-        const int labelWidth = 150;
-        const int controlHeight = 30;
         int y = margin;
 
+        // Recreate controls directly
+        // CRITICAL FIX: Force recreate controls on the panel with proper bounds
+        mainPanel->removeAllChildren();
+        
+        // Re-add components with proper bounds
         // Learning mode toggle
         learningModeToggle.setBounds(margin, y, mainPanel->getWidth() - margin * 2, controlHeight);
+        mainPanel->addAndMakeVisible(learningModeToggle);
         juce::Logger::writeToLog("- learningModeToggle: " + learningModeToggle.getBounds().toString());
         y += controlHeight + margin;
 
-        // Current note slider
+        // Current note slider and label
         currentNoteLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(currentNoteLabel);
+        
         currentNoteSlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(currentNoteSlider);
         juce::Logger::writeToLog("- currentNoteSlider: " + currentNoteSlider.getBounds().toString());
         y += controlHeight + margin;
-
-        // Max polyphony slider
+        
+        // Max polyphony
         maxPolyphonyLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(maxPolyphonyLabel);
+        
         maxPolyphonySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        juce::Logger::writeToLog("- maxPolyphonySlider: " + maxPolyphonySlider.getBounds().toString());
-        y += controlHeight + margin;
-
-        // MIDI channel slider
-        midiChannelLabel.setBounds(margin, y, labelWidth, controlHeight);
-        midiChannelSlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        juce::Logger::writeToLog("- midiChannelSlider: " + midiChannelSlider.getBounds().toString());
-        y += controlHeight + margin;
-
-        // MIDI velocity slider
-        midiVelocityLabel.setBounds(margin, y, labelWidth, controlHeight);
-        midiVelocitySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        juce::Logger::writeToLog("- midiVelocitySlider: " + midiVelocitySlider.getBounds().toString());
-        y += controlHeight + margin;
-
-        // Note on delay slider
-        noteOnDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
-        noteOnDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        juce::Logger::writeToLog("- noteOnDelaySlider: " + noteOnDelaySlider.getBounds().toString());
-        y += controlHeight + margin;
-
-        // Note off delay slider
-        noteOffDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
-        noteOffDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
-        juce::Logger::writeToLog("- noteOffDelaySlider: " + noteOffDelaySlider.getBounds().toString());
+        mainPanel->addAndMakeVisible(maxPolyphonySlider);
         y += controlHeight + margin;
         
-        // Debug text editor at the bottom
-        m_debugTextEditor.setBounds(margin, mainPanel->getHeight() - 150 - margin, 
-                                 mainPanel->getWidth() - margin*2, 150);
-        juce::Logger::writeToLog("- debugTextEditor: " + m_debugTextEditor.getBounds().toString());
+        // MIDI Channel
+        midiChannelLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(midiChannelLabel);
+        
+        midiChannelSlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(midiChannelSlider);
+        y += controlHeight + margin;
+        
+        // MIDI Velocity
+        midiVelocityLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(midiVelocityLabel);
+        
+        midiVelocitySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(midiVelocitySlider);
+        y += controlHeight + margin;
+        
+        // Note On Delay
+        noteOnDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(noteOnDelayLabel);
+        
+        noteOnDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(noteOnDelaySlider);
+        y += controlHeight + margin;
+        
+        // Note Off Delay
+        noteOffDelayLabel.setBounds(margin, y, labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(noteOffDelayLabel);
+        
+        noteOffDelaySlider.setBounds(margin + labelWidth, y, mainPanel->getWidth() - margin * 2 - labelWidth, controlHeight);
+        mainPanel->addAndMakeVisible(noteOffDelaySlider);
+        y += controlHeight + margin;
+
+        // Debug text editor
+        m_debugTextEditor.setBounds(margin, y, mainPanel->getWidth() - margin * 2, 150);
+        mainPanel->addAndMakeVisible(m_debugTextEditor);
         
         // Force repaint
         mainPanel->repaint();
@@ -454,6 +708,9 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
     if (guitarPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in guitar panel");
+        // Clear existing children
+        guitarPanel->removeAllChildren();
+        
         const int margin = 20;
         const int labelWidth = 150;
         const int controlHeight = 30;
@@ -461,23 +718,31 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
 
         // Guitar string controls
         guitarStringLabel.setBounds(margin, y, labelWidth, controlHeight);
+        guitarPanel->addAndMakeVisible(guitarStringLabel);
+        
         guitarStringCombo.setBounds(margin + labelWidth, y, 200, controlHeight);
+        guitarPanel->addAndMakeVisible(guitarStringCombo);
         juce::Logger::writeToLog("- guitarStringCombo: " + guitarStringCombo.getBounds().toString());
         y += controlHeight + margin;
 
         // Guitar fret controls
         guitarFretLabel.setBounds(margin, y, labelWidth, controlHeight);
+        guitarPanel->addAndMakeVisible(guitarFretLabel);
+        
         guitarFretSlider.setBounds(margin + labelWidth, y, guitarPanel->getWidth() - margin * 3 - labelWidth, controlHeight);
+        guitarPanel->addAndMakeVisible(guitarFretSlider);
         juce::Logger::writeToLog("- guitarFretSlider: " + guitarFretSlider.getBounds().toString());
         y += controlHeight + margin * 2;
 
-        // Learn button
-        learnFretButton.setBounds(margin, y, 200, 40);
+        // Learn button - make it bigger
+        learnFretButton.setBounds(margin, y, 300, 40);
+        guitarPanel->addAndMakeVisible(learnFretButton);
         juce::Logger::writeToLog("- learnFretButton: " + learnFretButton.getBounds().toString());
         y += 50;
 
         // Status label
         learningStatusLabel.setBounds(margin, y, guitarPanel->getWidth() - margin * 2, 40);
+        guitarPanel->addAndMakeVisible(learningStatusLabel);
         juce::Logger::writeToLog("- learningStatusLabel: " + learningStatusLabel.getBounds().toString());
         
         // Force repaint
@@ -492,6 +757,9 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
     if (visualPanel != nullptr)
     {
         juce::Logger::writeToLog("Positioning controls in visualization panel");
+        // Clear existing children
+        visualPanel->removeAllChildren();
+        
         auto bounds = visualPanel->getLocalBounds().reduced(20);
         auto topSection = bounds.removeFromTop(bounds.getHeight() / 2);
 
@@ -499,6 +767,7 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
         if (jayImageComponent)
         {
             jayImageComponent->setBounds(topSection);
+            visualPanel->addAndMakeVisible(*jayImageComponent);
             juce::Logger::writeToLog("- jayImageComponent: " + jayImageComponent->getBounds().toString());
         }
 
@@ -506,6 +775,7 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
         if (spectrogramComponent)
         {
             spectrogramComponent->setBounds(bounds);
+            visualPanel->addAndMakeVisible(*spectrogramComponent);
             juce::Logger::writeToLog("- spectrogramComponent: " + spectrogramComponent->getBounds().toString());
         }
         
@@ -518,20 +788,5 @@ void PolyphonicTrackerAudioProcessorEditor::resized()
     }
     
     // Force all components to repaint
-    learningModeToggle.repaint();
-    currentNoteSlider.repaint();
-    maxPolyphonySlider.repaint();
-    midiChannelSlider.repaint();
-    midiVelocitySlider.repaint();
-    noteOnDelaySlider.repaint();
-    noteOffDelaySlider.repaint();
-    m_debugTextEditor.repaint();
-    
-    guitarStringCombo.repaint();
-    guitarFretSlider.repaint();
-    learnFretButton.repaint();
-    learningStatusLabel.repaint();
-    
-    if (jayImageComponent) jayImageComponent->repaint();
-    if (spectrogramComponent) spectrogramComponent->repaint();
+    repaint();
 }

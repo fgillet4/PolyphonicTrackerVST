@@ -9,12 +9,39 @@ public:
     CustomPanel(const juce::String& panelTitle = "Panel") 
         : title(panelTitle)
     { 
-        setOpaque(true);
+        setOpaque(false); // Make non-opaque to allow components to show through
         
         // Important to set a z-order that allows child components to be visible
         setInterceptsMouseClicks(false, true); // Don't intercept mouse clicks but children do
         
         juce::Logger::writeToLog("CustomPanel created: " + title);
+    }
+    
+    // Custom implementation to make children really work
+    void addAndMakeVisible(juce::Component& childComponent)
+    {
+        // Actually add the child component
+        addChildComponent(childComponent);
+        
+        // Make it visible, with a size
+        childComponent.setVisible(true);
+        
+        // Force a bounds check for safety
+        if (childComponent.getWidth() <= 0 || childComponent.getHeight() <= 0) {
+            // If no size, give it a default size
+            childComponent.setBounds(20, 20, 300, 30);
+        }
+        
+        // Log for debugging
+        juce::Logger::writeToLog("CustomPanel: Added child to " + title + 
+                             " - visible: " + juce::String(childComponent.isVisible() ? "YES" : "NO") +
+                             " bounds: " + childComponent.getBounds().toString());
+                             
+        // Ensure it's really on top
+        childComponent.toFront(false);
+        
+        // Force repaint
+        repaint();
     }
     
     void paint(juce::Graphics& g) override
@@ -59,6 +86,26 @@ public:
         
         // Debug - show panel is working
         juce::Logger::writeToLog("CustomPanel painted: " + title + " " + getBounds().toString());
+        
+        // Draw red rectangles around all child components to make them visible
+        for (int i = 0; i < childCount; ++i) {
+            if (auto* child = getChildComponent(i)) {
+                // Only draw if child has non-zero size
+                if (!child->getBounds().isEmpty()) {
+                    g.setColour(juce::Colours::red.withAlpha(0.3f));
+                    g.fillRect(child->getBounds());
+                    g.setColour(juce::Colours::red);
+                    g.drawRect(child->getBounds(), 1);
+                }
+                
+                // If a slider or button, draw a more visible highlight
+                if (dynamic_cast<juce::Slider*>(child) || dynamic_cast<juce::Button*>(child) || 
+                    dynamic_cast<juce::ComboBox*>(child)) {
+                    g.setColour(juce::Colours::yellow.withAlpha(0.5f));
+                    g.drawRect(child->getBounds(), 2);
+                }
+            }
+        }
     }
     
 private:

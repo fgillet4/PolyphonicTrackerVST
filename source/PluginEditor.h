@@ -137,6 +137,13 @@ private:
     CustomPanel* guitarPanel = nullptr;
     CustomPanel* visualPanel = nullptr;
     
+    // Emergency components for direct testing
+    std::unique_ptr<juce::TextButton> emergencyButton;
+    std::unique_ptr<juce::Slider> emergencySlider;
+    std::unique_ptr<juce::ComboBox> emergencyGuitarControls;
+    std::unique_ptr<juce::Slider> emergencyFretSlider;
+    std::unique_ptr<juce::TextButton> emergencyLearnButton;
+    
     // Debug text editor
     juce::TextEditor m_debugTextEditor;
     

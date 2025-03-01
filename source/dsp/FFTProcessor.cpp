@@ -52,6 +52,7 @@ bool FFTProcessor::processBlock(const float* inBuffer, int numSamples)
     return fftPerformed;
 }
 
+// In FFTProcessor.cpp
 void FFTProcessor::performFFT()
 {
     // Apply window function
@@ -77,10 +78,18 @@ void FFTProcessor::performFFT()
         magnitudeSpectrum[static_cast<size_t>(i)] = std::sqrt(real * real + imag * imag);
     }
     
-    // Call the callback if registered
+    // Call the callback if registered - in a try/catch block
     if (spectrumCallback)
     {
-        spectrumCallback(magnitudeSpectrum.data(), spectrumSize);
+        try {
+            std::function<void(const float*, int)> callbackCopy = spectrumCallback;
+            if (callbackCopy) {
+                callbackCopy(magnitudeSpectrum.data(), spectrumSize);
+            }
+        }
+        catch (const std::exception& e) {
+            juce::Logger::writeToLog("Error in FFT callback: " + juce::String(e.what()));
+        }
     }
 }
 

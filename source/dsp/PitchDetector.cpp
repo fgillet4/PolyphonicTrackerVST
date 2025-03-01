@@ -4,8 +4,14 @@ PitchDetector::PitchDetector(int maxNotes)
     : learningModeActive(false),
       currentLearningNote(-1),
       maxPolyphony(maxNotes),
-      requiredSpectraForLearning(10)
+      requiredSpectraForLearning(10),
+      instrumentType(InstrumentType::Generic),
+      currentGuitarString(0),
+      currentGuitarFret(0)
 {
+    // Set default guitar settings
+    guitarSettings.openStringMidiNotes = {40, 45, 50, 55, 59, 64}; // E2, A2, D3, G3, B3, E4
+    guitarSettings.numFrets = 24;
 }
 
 PitchDetector::~PitchDetector()
@@ -30,6 +36,26 @@ void PitchDetector::setCurrentLearningNote(int midiNote)
 int PitchDetector::getCurrentLearningNote() const
 {
     return currentLearningNote;
+}
+
+void PitchDetector::setGuitarSettings(const GuitarSettings& settings)
+{
+    guitarSettings = settings;
+}
+
+void PitchDetector::setInstrumentType(InstrumentType type)
+{
+    instrumentType = type;
+}
+
+const PitchDetector::GuitarSettings& PitchDetector::getGuitarSettings() const
+{
+    return guitarSettings;
+}
+
+PitchDetector::InstrumentType PitchDetector::getInstrumentType() const
+{
+    return instrumentType;
 }
 
 std::vector<int> PitchDetector::processSpectrum(const float* spectrum, int spectrumSize)
@@ -74,14 +100,12 @@ void PitchDetector::addLearnedSpectrum(const float* spectrumData, int spectrumSi
     if (static_cast<int>(learnedSpectraPerNote[midiNote].size()) >= requiredSpectraForLearning)
     {
         // Calculate the average spectrum for this note
-        std::vector<float> avgSpectrum(spectrumSize, 0.0f);
-        
+        std::vector<float> avgSpectrum(static_cast<size_t>(spectrumSize), 0.0f);        
         for (const auto& learnedSpectrum : learnedSpectraPerNote[midiNote])
         {
             for (int i = 0; i < spectrumSize; ++i)
             {
-                avgSpectrum[i] += learnedSpectrum[i];
-            }
+                avgSpectrum[static_cast<size_t>(i)] += learnedSpectrum[static_cast<size_t>(i)];            }
         }
         
         // Normalize the average
@@ -226,9 +250,7 @@ bool PitchDetector::saveInstrumentData(const juce::String& filePath)
         outStream.writeInt(profile.midiNote);
         
         // Write note name length and string
-        outStream.writeInt(static_cast<int>(profile.noteName.length()));
-        outStream.writeString(profile.noteName);
-        
+        outStream.writeInt(static_cast<int>(profile.noteName.length()));        
         // Write spectrum size and data
         outStream.writeInt(static_cast<int>(profile.spectrum.size()));
         for (float val : profile.spectrum)
@@ -261,22 +283,42 @@ bool PitchDetector::loadInstrumentData(const juce::String& filePath)
         profile.midiNote = inStream.readInt();
         
         // Read note name
-        int nameLength = inStream.readInt();
-        profile.noteName = inStream.readString().toStdString();
         
         // Read spectrum
         int spectrumSize = inStream.readInt();
-        profile.spectrum.resize(spectrumSize);
-        
+        profile.spectrum.resize(static_cast<size_t>(spectrumSize));        
         for (int j = 0; j < spectrumSize; ++j)
         {
-            profile.spectrum[j] = inStream.readFloat();
-        }
+            profile.spectrum[static_cast<size_t>(j)] = inStream.readFloat();        }
         
         learnedProfiles.push_back(profile);
     }
     
     return true;
+}
+
+
+int PitchDetector::setCurrentGuitarPosition(int stringIndex, int fret)
+{
+    currentGuitarString = stringIndex;
+    currentGuitarFret = fret;
+    
+    // Calculate MIDI note based on string and fret
+    if (stringIndex >= 0 && stringIndex < static_cast<int>(guitarSettings.openStringMidiNotes.size()))
+    {
+        int baseMidiNote = guitarSettings.openStringMidiNotes[static_cast<size_t>(stringIndex)];
+        int midiNote = baseMidiNote + fret;
+        return midiNote;
+    }
+    
+    return 60; // Default to middle C if string is invalid
+}
+
+
+void PitchDetector::getCurrentGuitarPosition(int& stringIndex, int& fretNumber) const
+{
+    stringIndex = currentGuitarString;
+    fretNumber = currentGuitarFret;
 }
 
 void PitchDetector::clearInstrumentData()

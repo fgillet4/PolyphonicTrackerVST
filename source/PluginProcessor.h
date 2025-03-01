@@ -1,14 +1,15 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-
-// Include our DSP components
-#include "dsp/FFTProcessor.h"
 #include "dsp/PitchDetector.h"
-#include "midi/MIDIManager.h"
 
-class PolyphonicTrackerAudioProcessor : public juce::AudioProcessor,
-                                        private juce::Timer
+// Forward declarations
+class FFTProcessor;
+class PitchDetector;
+class MIDIManager;
+
+//==============================================================================
+class PolyphonicTrackerAudioProcessor : public juce::AudioProcessor, public juce::Timer
 {
 public:
     //==============================================================================
@@ -47,8 +48,16 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     //==============================================================================
-    // Polyphonic tracker parameters
+    // Parameter access
+    juce::AudioProcessorValueTreeState& getParameterTree() { return parameters; }
     
+    // FFT Visualization support
+    void setFFTDataCallback(std::function<void(const float*, int)> callback);
+    const float* getLatestFFTData() const;
+    int getLatestFFTSize() const;
+
+
+    //==============================================================================
     // Learning mode
     void setLearningModeActive(bool shouldBeActive);
     bool isLearningModeActive() const;
@@ -59,7 +68,24 @@ public:
     
     // Set max polyphony
     void setMaxPolyphony(int maxNotes);
-    int getMaxPolyphony() const;
+    int getMaxPolyphony() const;  // Add this line
+
+
+    // Instrument type
+    void setInstrumentType(PitchDetector::InstrumentType type);
+    
+    PitchDetector::InstrumentType getInstrumentType() const;
+
+
+    // Guitar-specific learning
+    void setGuitarSettings(const PitchDetector::GuitarSettings& settings);
+    int setCurrentGuitarPosition(int stringIndex, int fret);
+    void getCurrentGuitarPosition(int& stringIndex, int& fretNumber) const;
+    const PitchDetector::GuitarSettings& getGuitarSettings() const;
+    
+    // Guitar settings access
+    const juce::StringArray& getOpenStringMidiNotes() const;
+    int getNumFrets() const;
     
     // Save/load instrument data
     bool saveInstrumentData(const juce::String& filePath);
@@ -77,17 +103,27 @@ public:
     
     void setFFTOverlap(float overlapFactor);
     float getFFTOverlap() const;
-    
+    void timerCallback() override; // Declare the virtual method
+    // In PluginProcessor.h
+    void logDebugState() const
+    {
+        juce::String state = "PolyphonicTracker state:";
+        state += "\n - Learning mode: " + juce::String(isLearningModeActive() ? "ON" : "OFF");
+        state += "\n - Current note: " + juce::String(getCurrentLearningNote());
+        state += "\n - Max polyphony: " + juce::String(getMaxPolyphony());
+        state += "\n - FFT size: " + juce::String(getFFTSize());
+        state += "\n - FFT overlap: " + juce::String(getFFTOverlap());
+        
+        juce::Logger::writeToLog(state);
+    }
+
 private:
     //==============================================================================
-    // Timer callback for periodic updates
-    void timerCallback() override;
+    // Create parameter layout
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     
     // Process the FFT results and handle pitch detection
     void handleNewFFTBlock(const float* fftData, int fftSize);
-    
-    // Create parameter layout
-    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     
     //==============================================================================
     // Parameter storage
@@ -98,9 +134,19 @@ private:
     std::unique_ptr<PitchDetector> pitchDetector;
     std::unique_ptr<MIDIManager> midiManager;
     
+    // FFT visualization support
+    std::function<void(const float*, int)> fftDataCallback;
+    
     // Internal state
     int currentFFTSize;
     float currentOverlapFactor;
+    
+    // Guitar settings
+    juce::StringArray openStringMidiNotes;
+    int numFrets;
+    int currentGuitarString;
+    int currentGuitarFret;
+    int instrumentType;
     
     // Parameter pointers
     std::atomic<float>* learningModeParam = nullptr;

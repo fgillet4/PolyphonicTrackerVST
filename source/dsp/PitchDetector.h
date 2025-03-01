@@ -24,6 +24,24 @@ public:
      */
     ~PitchDetector();
     
+
+    /**
+     * Enum for learning mode instrument types
+     */
+    enum class InstrumentType {
+        Generic,
+        Guitar,
+        Piano,
+        Bass
+    };
+    /**
+     * Struct for guitar settings
+     */
+    struct GuitarSettings {
+        // Standard tuning (E, A, D, G, B, E)
+        std::vector<int> openStringMidiNotes = {40, 45, 50, 55, 59, 64};
+        int numFrets = 24;  // Maximum number of frets to learn
+    };
     /**
      * Activates or deactivates learning mode
      * @param shouldBeActive True to enable learning mode, false to disable
@@ -35,7 +53,30 @@ public:
      * @return True if learning mode is active
      */
     bool isLearningModeActive() const;
+    /**
+     * Sets the instrument type for learning mode
+     * @param type The type of instrument being learned
+     */
+    void setInstrumentType(InstrumentType type);
     
+    /**
+     * Gets the current instrument type
+     * @return Current instrument type
+     */
+    InstrumentType getInstrumentType() const;
+
+    /**
+     * Gets the current guitar settings
+     * @return Current guitar settings
+     */
+    const GuitarSettings& getGuitarSettings() const;
+
+    /**
+     * Sets the guitar settings for guitar mode
+     * @param settings Guitar configuration settings
+     */
+    void setGuitarSettings(const GuitarSettings& settings);
+
     /**
      * Sets the current monophonic note being learned (when in learning mode)
      * @param midiNote MIDI note number being learned
@@ -47,7 +88,21 @@ public:
      * @return Current MIDI note number, or -1 if not set
      */
     int getCurrentLearningNote() const;
-    
+
+    /**
+     * Gets the current guitar position
+     * @param stringIndex Output parameter for string index
+     * @param fretNumber Output parameter for fret number
+     */
+    void getCurrentGuitarPosition(int& stringIndex, int& fretNumber) const;
+
+    /**
+     * Sets the current guitar string and fret for learning (guitar mode only)
+     * @param stringIndex String index (0-5, where 0 is the low E string)
+     * @param fret Fret number (0 for open string)
+     * @return The corresponding MIDI note number
+     */
+    int setCurrentGuitarPosition(int stringIndex, int fret);
     /**
      * Process a new spectrum for pitch detection or learning
      * @param spectrum Pointer to the magnitude spectrum data
@@ -104,12 +159,24 @@ private:
         int midiNote;
         std::vector<float> spectrum;
         std::string noteName;
+
+        // Guitar-specific information (if applicable)
+        int guitarString = -1;
+        int guitarFret = -1;
     };
     
     bool learningModeActive;
     int currentLearningNote;
     int maxPolyphony;
     int requiredSpectraForLearning;
+
+    // Instrument type and settings
+    InstrumentType instrumentType;
+    GuitarSettings guitarSettings;
+    
+    // Current guitar position (for guitar mode)
+    int currentGuitarString;
+    int currentGuitarFret;
     
     std::vector<SpectralProfile> learnedProfiles;
     std::map<int, std::vector<std::vector<float>>> learnedSpectraPerNote;

@@ -45,6 +45,9 @@ target_sources(PolyphonicTrackerVST
         
         # MIDI components
         source/midi/MIDIManager.cpp
+
+        # GUI components
+        source/gui/SpectrogramComponent.cpp
 )
 
 # Add include directories

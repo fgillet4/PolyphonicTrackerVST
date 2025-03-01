@@ -2,6 +2,7 @@
 build/
 bin/
 lib/
+build-mac-apple-silicon/
 
 # IDE specific files
 .vscode/

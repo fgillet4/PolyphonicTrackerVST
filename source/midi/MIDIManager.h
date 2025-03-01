@@ -61,6 +61,8 @@ public:
      * @param ms Time in milliseconds
      */
     void setNoteOffDelayMs(int ms);
+
+    void updateSampleRate(double newSampleRate);
     
 private:
     std::set<int> activeNotes;         // Currently active (sounding) notes
@@ -78,5 +80,4 @@ private:
      * Updates the sample rate dependent parameters
      * @param newSampleRate New sample rate in Hz
      */
-    void updateSampleRate(double newSampleRate);
 };

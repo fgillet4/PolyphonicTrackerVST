@@ -1,0 +1,4 @@
+build/
+build-mac-apple-silicon/
+.env
+libs/

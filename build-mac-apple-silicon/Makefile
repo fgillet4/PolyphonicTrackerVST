@@ -1006,6 +1006,30 @@ source/dsp/PitchDetector.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/dsp/PitchDetector.cpp.s
 .PHONY : source/dsp/PitchDetector.cpp.s
 
+source/gui/SpectrogramComponent.o: source/gui/SpectrogramComponent.cpp.o
+.PHONY : source/gui/SpectrogramComponent.o
+
+# target to build an object file
+source/gui/SpectrogramComponent.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/gui/SpectrogramComponent.cpp.o
+.PHONY : source/gui/SpectrogramComponent.cpp.o
+
+source/gui/SpectrogramComponent.i: source/gui/SpectrogramComponent.cpp.i
+.PHONY : source/gui/SpectrogramComponent.i
+
+# target to preprocess a source file
+source/gui/SpectrogramComponent.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/gui/SpectrogramComponent.cpp.i
+.PHONY : source/gui/SpectrogramComponent.cpp.i
+
+source/gui/SpectrogramComponent.s: source/gui/SpectrogramComponent.cpp.s
+.PHONY : source/gui/SpectrogramComponent.s
+
+# target to generate assembly for a file
+source/gui/SpectrogramComponent.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/PolyphonicTrackerVST.dir/build.make CMakeFiles/PolyphonicTrackerVST.dir/source/gui/SpectrogramComponent.cpp.s
+.PHONY : source/gui/SpectrogramComponent.cpp.s
+
 source/midi/MIDIManager.o: source/midi/MIDIManager.cpp.o
 .PHONY : source/midi/MIDIManager.o
 
@@ -1145,6 +1169,9 @@ help:
 	@echo "... source/dsp/PitchDetector.o"
 	@echo "... source/dsp/PitchDetector.i"
 	@echo "... source/dsp/PitchDetector.s"
+	@echo "... source/gui/SpectrogramComponent.o"
+	@echo "... source/gui/SpectrogramComponent.i"
+	@echo "... source/gui/SpectrogramComponent.s"
 	@echo "... source/midi/MIDIManager.o"
 	@echo "... source/midi/MIDIManager.i"
 	@echo "... source/midi/MIDIManager.s"

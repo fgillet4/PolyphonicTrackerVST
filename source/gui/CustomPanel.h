@@ -67,32 +67,24 @@ public:
         
         // Add title with purple highlight
         g.setColour(juce::Colour(0xFF9C33FF)); // Purple
-        g.setFont(14.0f);
-        g.drawText(title, 10, 10, getWidth() - 20, 24, juce::Justification::left, true);
+        g.setFont(16.0f);
+        g.drawText(title, 20, 10, getWidth() - 40, 24, juce::Justification::left, true);
         
         // Add control box outline to show where controls should be
         g.setColour(juce::Colour(0xFF9C33FF).withAlpha(0.3f));
-        g.drawRect(20, 60, getWidth() - 40, getHeight() - 80, 1);
+        g.drawRect(20, 40, getWidth() - 40, getHeight() - 60, 1);
         
-        // Add control info text
-        g.setColour(juce::Colours::white);
-        g.setFont(12.0f);
-        g.drawText("Controls Active", 10, 34, 120, 20, juce::Justification::left, true);
-        
-        // Child count display
-        int childCount = getNumChildComponents();
-        g.drawText("Child Components: " + juce::String(childCount), 
-                  getWidth() - 150, 10, 140, 20, juce::Justification::right, true);
-        
-        // Debug - show panel is working
+        // Debug - show panel size
         juce::Logger::writeToLog("CustomPanel painted: " + title + " " + getBounds().toString());
         
-        // Draw red rectangles around all child components to make them visible
+        // For debugging only - show component bounds (can be disabled for production)
+        #ifdef DEBUG_LAYOUT
+        int childCount = getNumChildComponents();
         for (int i = 0; i < childCount; ++i) {
             if (auto* child = getChildComponent(i)) {
                 // Only draw if child has non-zero size
                 if (!child->getBounds().isEmpty()) {
-                    g.setColour(juce::Colours::red.withAlpha(0.3f));
+                    g.setColour(juce::Colours::red.withAlpha(0.2f));
                     g.fillRect(child->getBounds());
                     g.setColour(juce::Colours::red);
                     g.drawRect(child->getBounds(), 1);
@@ -101,11 +93,12 @@ public:
                 // If a slider or button, draw a more visible highlight
                 if (dynamic_cast<juce::Slider*>(child) || dynamic_cast<juce::Button*>(child) || 
                     dynamic_cast<juce::ComboBox*>(child)) {
-                    g.setColour(juce::Colours::yellow.withAlpha(0.5f));
+                    g.setColour(juce::Colours::yellow.withAlpha(0.3f));
                     g.drawRect(child->getBounds(), 2);
                 }
             }
         }
+        #endif
     }
     
 private:

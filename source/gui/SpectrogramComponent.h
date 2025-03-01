@@ -40,6 +40,9 @@ public:
     // Clear all marked frequencies
     void clearMarkedFrequencies();
     
+    // Set background and foreground colors
+    void setColours(juce::Colour background, juce::Colour foreground);
+    
 private:
     //==============================================================================
     void timerCallback() override;
@@ -88,6 +91,10 @@ private:
     
     // Thread safety
     juce::CriticalSection callbackLock;
+    
+    // Custom colors
+    juce::Colour backgroundColour;
+    juce::Colour foregroundColour;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramComponent)

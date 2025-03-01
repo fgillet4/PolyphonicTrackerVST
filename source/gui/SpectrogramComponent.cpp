@@ -4,7 +4,9 @@ SpectrogramComponent::SpectrogramComponent()
     : threshold(0.001f), // Lower threshold to catch smaller amplitudes
       useLogFrequency(true),
       showThreshold(true),
-      sampleRate(44100.0f)
+      sampleRate(44100.0f),
+      backgroundColour(juce::Colour(0xFF0A0A0A)),
+      foregroundColour(juce::Colour(0xFF9C33FF))
 {
     // Initialize FFT data
     fftData.resize(kMaxFFTSize, 0.0f);
@@ -31,8 +33,8 @@ SpectrogramComponent::~SpectrogramComponent()
 
 void SpectrogramComponent::paint(juce::Graphics& g)
 {
-    // Background
-    g.fillAll(juce::Colour(0xFF0A0A0A)); // Very dark background
+    // Background using custom color
+    g.fillAll(backgroundColour);
     
     // Get component dimensions
     int width = getWidth();
@@ -46,11 +48,13 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         return;
     }
 
-    // Draw debug text to confirm rendering
-    g.setColour(juce::Colours::white);
-    g.drawText("Spectrogram Active", getLocalBounds().withTrimmedBottom(20), juce::Justification::centredTop);
-    // Draw grid lines and frequency labels
-    g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+    // Draw header text with better styling
+    g.setColour(juce::Colour(0xFF9C33FF)); // Purple to match theme
+    g.setFont(juce::Font(16.0f, juce::Font::bold));
+    g.drawText("Frequency Spectrum", getLocalBounds().withTrimmedBottom(20), juce::Justification::centredTop);
+    
+    // Draw grid lines and frequency labels with better visibility
+    g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
     // Octave grid lines (if using log scale)
     if (useLogFrequency)
     {
@@ -58,10 +62,11 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         {
             float x = frequencyToX(static_cast<float>(freq));
             g.drawVerticalLine(static_cast<int>(x), 0.0f, static_cast<float>(height));
-            g.setColour(juce::Colours::grey);
+            g.setColour(juce::Colours::lightgrey);
             juce::String label = (freq >= 1000) ? juce::String(freq / 1000) + "kHz" : juce::String(freq) + "Hz";
+            g.setFont(juce::Font(12.0f, juce::Font::bold));
             g.drawText(label, static_cast<int>(x) - 20, height - 20, 40, 20, juce::Justification::centred, false);
-            g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+            g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
         }
     }
     else
@@ -70,30 +75,36 @@ void SpectrogramComponent::paint(juce::Graphics& g)
         {
             float x = frequencyToX(static_cast<float>(freq));
             g.drawVerticalLine(static_cast<int>(x), 0.0f, static_cast<float>(height));
-            g.setColour(juce::Colours::grey);
+            g.setColour(juce::Colours::lightgrey);
             juce::String label = (freq >= 1000) ? juce::String(freq / 1000) + "kHz" : juce::String(freq) + "Hz";
+            g.setFont(juce::Font(12.0f, juce::Font::bold));
             g.drawText(label, static_cast<int>(x) - 20, height - 20, 40, 20, juce::Justification::centred, false);
-            g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+            g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
         }
     }
     
-    // Amplitude grid lines
+    // Amplitude grid lines with improved visibility
     for (float amp = 0.0f; amp <= 1.0f; amp += 0.2f)
     {
         float y = amplitudeToY(amp);
         g.drawHorizontalLine(static_cast<int>(y), 0.0f, static_cast<float>(width));
-        g.setColour(juce::Colours::grey);
+        g.setColour(juce::Colours::lightgrey);
         juce::String label = juce::String(static_cast<int>(amp * 100)) + "%";
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
         g.drawText(label, 5, static_cast<int>(y) - 10, 40, 20, juce::Justification::left, false);
-        g.setColour(juce::Colours::darkgrey.withAlpha(0.5f));
+        g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
     }
     
-    // Draw threshold line if enabled
+    // Draw threshold line if enabled, using theme color
     if (showThreshold)
     {
-        g.setColour(juce::Colour(0xFF9C33FF).withAlpha(0.7f)); // Purple line
+        g.setColour(foregroundColour.withAlpha(0.7f));
         float thresholdY = amplitudeToY(threshold);
         g.drawHorizontalLine(static_cast<int>(thresholdY), 0.0f, static_cast<float>(width));
+        
+        // Label the threshold line
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
+        g.drawText("Threshold", 5, static_cast<int>(thresholdY) - 15, 80, 15, juce::Justification::left, false);
     }
     // Draw current spectrum (force visibility for debug)
     bool drewSomething = false;
@@ -121,8 +132,15 @@ void SpectrogramComponent::paint(juce::Graphics& g)
     }
     if (!drewSomething)
     {
-        g.setColour(juce::Colours::yellow);
-        g.drawText("No Data", getLocalBounds(), juce::Justification::centred);
+        g.setColour(foregroundColour); // Use theme color
+        g.setFont(juce::Font(18.0f, juce::Font::bold));
+        g.drawText("Waiting for Audio Input...", getLocalBounds(), juce::Justification::centred);
+        
+        // Add a helpful hint
+        g.setFont(juce::Font(14.0f));
+        g.drawText("Play your instrument to see the frequency spectrum", 
+                  getLocalBounds().withTrimmedTop(getHeight()/2 + 20), 
+                  juce::Justification::centredTop);
     }
     // Draw waterfall history
     {
@@ -342,6 +360,13 @@ void SpectrogramComponent::markFrequency(float freqHz, bool isActive)
 void SpectrogramComponent::clearMarkedFrequencies()
 {
     markedFrequencies.clear();
+    repaint();
+}
+
+void SpectrogramComponent::setColours(juce::Colour background, juce::Colour foreground)
+{
+    backgroundColour = background;
+    foregroundColour = foreground;
     repaint();
 }
 
